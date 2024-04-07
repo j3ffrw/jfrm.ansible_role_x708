@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Hardware Power Management & Safe Shutdown daemon
+
+[Service]
+Type=simple
+ExecStart={{ x708_install_path }}/xPWR.sh {{ x708_gpio_chip_path | basename }} {{ x708_shutdownpin }} {{x708_bootpin }}
+Restart=always
+
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

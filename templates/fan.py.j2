@@ -1,0 +1,59 @@
+#!/usr/bin/env {{ x708_pip_venv_path }}/bin/python3
+
+import subprocess
+import time
+import gpiod
+from gpiod.line import Direction, Value
+
+ON_THRESHOLD = {{ x708_fan_temp_high_threshold }}  # (degrees Celsius) Fan running at high speed at this temperature.
+OFF_THRESHOLD = {{ x708_fan_temp_low_threshold }}  # (degress Celsius) Fan running at low speed  at this temperature.
+SLEEP_INTERVAL = 5  # (seconds) How often we check the core temperature.
+GPIO_PIN = {{ x708_fanpin }}  # Which GPIO pin you're using to control the fan.
+CHIP_PATH = "{{ x708_gpio_chip_path }}"
+
+def get_temp():
+    """Get the core temperature.
+    Run a shell script to get the core temp and parse the output.
+    Raises:
+        RuntimeError: if response cannot be parsed.
+    Returns:
+        float: The core temperature in degrees Celsius.
+    """
+    output = subprocess.run(['vcgencmd', 'measure_temp'], capture_output=True)
+    temp_str = output.stdout.decode()
+    try:
+        return float(temp_str.split('=')[1].split('\'')[0])
+    except (IndexError, ValueError):
+        raise RuntimeError('Could not parse temperature output.')
+
+if __name__ == '__main__':
+    # Validate the on and off thresholds
+    if OFF_THRESHOLD >= ON_THRESHOLD:
+        raise RuntimeError('OFF_THRESHOLD must be less than ON_THRESHOLD')
+
+    with gpiod.request_lines(
+        CHIP_PATH,
+        consumer="x708 Fan Speed",
+        config={
+            GPIO_PIN: gpiod.LineSettings(
+                direction=Direction.OUTPUT, output_value=Value.INACTIVE
+            )
+        },
+    ) as request:
+        while True:
+            temp = get_temp()
+            print('Temp: %s', temp)
+            fan = request.get_value(GPIO_PIN)
+
+            # Run fan at high speed fan if the temperature has reached the limit and the fan
+            # isn't already running.
+            # NOTE: `fan.value` returns 1 for "on" and 0 for "off"
+            if temp > ON_THRESHOLD and not fan == 0:
+                request.set_value(GPIO_PIN, Value.ACTIVE)
+
+            # Run fan at low speed if the fan is running and the temperature has dropped
+            # below the limit.
+            elif fan == 0 and temp < OFF_THRESHOLD:
+                request.set_value(GPIO_PIN, Value.INACTIVE)
+
+            time.sleep(SLEEP_INTERVAL)

@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+# https://raw.githubusercontent.com/suptronics/x708v2.0/main/bat.py
+import struct
+import smbus
+import sys
+import time
+import RPi.GPIO as GPIO
+
+GPIO_PORT     = {{ x708_buttonpin }}
+I2C_ADDR      = {{ x708_hex_i2caddress }}
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(GPIO_PORT, GPIO.OUT)
+GPIO.setwarnings(False)
+
+def readVoltage(bus):
+
+     address = I2C_ADDR
+     read = bus.read_word_data(address, 2)
+     swapped = struct.unpack("<H", struct.pack(">H", read))[0]
+     voltage = swapped * 1.25 /1000/16
+     return voltage
+
+
+def readCapacity(bus):
+
+     address = I2C_ADDR
+     read = bus.read_word_data(address, 4)
+     swapped = struct.unpack("<H", struct.pack(">H", read))[0]
+     capacity = swapped/256
+     return capacity
+
+#  0 = /dev/i2c-0 (port I2C0), 1 = /dev/i2c-1 (port I2C1)
+bus = smbus.SMBus(1)
+
+while True:
+
+ print ("******************")
+ print ("Voltage:%5.2fV" % readVoltage(bus))
+
+ print ("Battery:%5i%%" % readCapacity(bus))
+
+ if readCapacity(bus) == 100:
+
+         print ("Battery FULL")
+
+ if readCapacity(bus) < 20:
+
+         print ("Battery Low")
+
+#  Set battery low voltage to shut down
+ if readVoltage(bus) < 3.50:
+
+         print ("Battery LOW!!!")
+         print ("Shutdown in 10 seconds")
+         time.sleep(10)
+         GPIO.output(GPIO_PORT, GPIO.HIGH)
+         time.sleep(3)
+         GPIO.output(GPIO_PORT, GPIO.LOW)
+
+ time.sleep(2)

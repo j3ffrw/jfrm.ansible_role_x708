@@ -1,0 +1,50 @@
+#!/usr/bin/env {{ x708_pip_venv_path }}/bin/python3
+# https://raw.githubusercontent.com/suptronics/x708v2.0/main/pld.py
+# https://github.com/brgl/libgpiod/blob/master/bindings/python/examples/watch_line_value.py
+# Test PLD without shutting down
+
+import gpiod
+from datetime import timedelta
+from gpiod.line import Bias, Edge
+
+CHIP_PATH = {{ x708_gpio_chip_path }}
+GPIO_PLD_PORT  = {{ x708_pldpin }}
+
+def edge_type_str(event):
+    if event.event_type is event.Type.RISING_EDGE:
+        return "---AC Power Loss OR Power Adapter Failure---"
+    if event.event_type is event.Type.FALLING_EDGE:
+        return "---AC Power OK,Power Adapter OK---"
+    return "Unknown"
+
+def watch_line_value(chip_path, line_offset):
+    # Assume a button connecting the pin to ground,
+    # so pull it up and provide some debounce.
+    with gpiod.request_lines(
+        chip_path,
+        consumer="PLD test script",
+        config={
+            line_offset: gpiod.LineSettings(
+                edge_detection=Edge.BOTH
+            )
+        },
+    ) as request:
+        while True:
+            # Blocks until at least one event is available
+            for event in request.read_edge_events():
+                print(
+                    "line: {}  type: {:<7}  event #{}".format(
+                        event.line_offset, edge_type_str(event), event.line_seqno
+                    )
+                )
+
+if __name__ == "__main__":
+    print ("1.Make sure your power adapter is connected")
+    print ("2.Disconnect and then connect the power adapter again to test")
+    print ("3.When power adapter disconnected, you will see: AC Power Loss or Power Adapter Failure")
+    print ("4.When power adapter reconnected, you will see: AC Power OK, Power Adapter OK")
+
+    try:
+        watch_line_value(CHIP_PATH, GPIO_PLD_PORT)
+    except OSError as ex:
+        print(ex, "\nCustomise the example configuration to suit your situation")

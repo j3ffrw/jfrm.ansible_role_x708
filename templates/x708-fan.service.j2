@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Hardware Power Management & Safe Shutdown daemon
+
+[Service]
+Type=simple
+ExecStart={{ x708_install_path }}/fan.py
+Restart=always
+
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

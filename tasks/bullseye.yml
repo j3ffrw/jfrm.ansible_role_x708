@@ -1,0 +1,55 @@
+- name: Copy x708 power button shutdown script
+  ansible.builtin.template:
+    src: rpigpio/x708softsd.sh.j2
+    dest: "{{ x708_install_path }}/x708softsd.sh"
+    mode: "0765"
+
+- name: Copy x708 shutdown poller script
+  ansible.builtin.template:
+    src: rpigpio/x708pwr.sh.j2
+    dest: "{{ x708_install_path }}/x708pwr.sh"
+    mode: "0765"
+
+- name: Start power button poller during startup
+  ansible.builtin.lineinfile:
+    path: /etc/rc.local
+    regex: "^/etc/x708pwr.sh"
+    line: "{{ x708_install_path }}/x708pwr.sh &"
+    insertbefore: '^exit 0$'
+
+- name: Add power off alias
+  ansible.builtin.lineinfile:
+    path: /etc/bash.bashrc
+    regex: "^alias x708off"
+    line: "alias x708off='sudo {{ x708_install_path }}/x708softsd.sh'"
+
+- name: Copy battery levels monitor script
+  ansible.builtin.template:
+    src: rpigpio/bat.py.j2
+    dest: "{{ x708_install_path }}/bat.py"
+    mode: "0754"
+
+- name: Copy power loss detection w/o shutdown test script
+  ansible.builtin.template:
+    src: rpigpio/pld.py.j2
+    dest: "{{ x708_install_path }}/pld.py"
+    mode: "0754"
+
+- name: Copy power loss detection with shutdown test script
+  ansible.builtin.template:
+    src: rpigpio/plsd.py.j2
+    dest: "{{ x708_install_path }}/plsd.py"
+    mode: "0754"
+
+- name: Copy fan speed control
+  ansible.builtin.template:
+    src: rpigpio/fan.py.j2
+    dest: "{{ x708_install_path }}/fan.py"
+    mode: "0754"
+      
+- name: Run fan speed controller
+  ansible.builtin.cron:
+    name: "fan speed controller"
+    special_time: reboot
+    job: |
+      {{ x708_install_path }}/fan.py 2>&1 | /usr/bin/logger -t fan --no-act -s 2>&1 | sed 's/^<[0-9]\+>//' >> /var/log/x708/fan.log

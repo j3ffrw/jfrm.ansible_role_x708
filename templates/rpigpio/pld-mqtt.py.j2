@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+# https://raw.githubusercontent.com/suptronics/x708v2.0/main/pld.py
+import paho.mqtt.client as mqtt
+import RPi.GPIO as GPIO
+import json
+import time
+
+
+GPIO_PORT = {{ x708_pldpin }}
+
+print ("Starting...")
+# wait for mqtt
+time.sleep(60)
+
+device = {'name':'x708_pld_hassio','unique_id':'0x811abf3a0a420104_x708','device':{'identifiers':['x708_pld_hassio'],'name':'x708_pld_hassio','manufacturer':'geekworm','model':'x708'},'state_topic':'x708/pld','device_class':'problem','entity_category':'diagnostic','payload_on': 'true', 'payload_off': 'false'}
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(GPIO_PORT, GPIO.IN)
+mqttBroker ="hassio-1.avcn.local"
+client = mqtt.Client("PLD_Detection")
+client.username_pw_set("x708","b2K9QhQgibcFrohDVbFpN9")
+client.connect(mqttBroker)
+
+client.publish("homeassistant/binary_sensor/x708/config", json.dumps(device))
+
+def my_callback(channel):
+    if GPIO.input(6):     # if port 6 == 1
+        client.publish("x708/pld", "true")
+        print ("---AC Power Loss OR Power Adapter Failure---")
+    else:                  # if port 6 != 1
+        client.publish("x708/pld", "false")
+        print ("---AC Power OK,Power Adapter OK---")
+
+GPIO.add_event_detect(6, GPIO.BOTH, callback=my_callback)
+
+print ("Power loss monitoring started")
+
+while True:
+    time.sleep(60)
+

@@ -1,0 +1,96 @@
+# http://www.suptronics.com/miniPCkits/x708_v2.0-software.html
+# https://wiki.geekworm.com/X708-Software
+
+- name: Install packages
+  ansible.builtin.apt:
+    pkg:
+      - python3-smbus
+      - i2c-tools
+      - python3-libgpiod
+      - libgpiod-dev
+    update_cache: true
+
+- name: Install pip modules
+  ansible.builtin.pip:
+    name: "{{ x708_pip_packages[ansible_distribution_release] }}"
+    virtualenv: "{{ x708_pip_venv_path }}"
+
+- name: Enable i2c
+  changed_when: true
+  ansible.builtin.command: "raspi-config nonint do_i2c 0"
+
+- name: Read raspi-config
+  changed_when: true
+  ansible.builtin.command: "raspi-config nonint get_i2c"
+  register: raspi_config_values
+  check_mode: false
+
+- name: Check if x708 is visible
+  changed_when: false
+  ansible.builtin.command: i2cdetect -y 1
+  register: i2c_addresses
+
+- name: "Show raspi_config"
+  ansible.builtin.debug:
+    msg: "{{ raspi_config_values }}"
+
+- name: Create x708 required directory
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /var/log/x708
+    - "{{ x708_install_path }}"
+
+- name: Include specific shutdown scripts for {{ ansible_distribution_release }}
+  ansible.builtin.include_tasks:
+    file: "{{ ansible_distribution_release }}.yml"
+    apply:
+      tags:
+        - x708
+  tags:
+    - x708
+
+- name: Reboot host and wait for it to restart
+  ansible.builtin.reboot:
+    msg: "Reboot initiated by Ansible"
+    connect_timeout: 5
+    reboot_timeout: 600
+    pre_reboot_delay: 0
+    post_reboot_delay: 30
+    test_command: whoami
+  when: (x708_hex_i2caddress | split('x') | last) not in i2c_addresses.stdout
+
+- name: Check if x708 is now visible
+  changed_when: false
+  ansible.builtin.command: i2cdetect -y 1
+  register: i2c_addresses
+  check_mode: false
+
+- name: Fail if x708 is still not found
+  ansible.builtin.fail:
+    msg: "x708 still not found after restart"
+      #  when: '"36" not in i2c_addresses.stdout'
+  when: (x708_hex_i2caddress | split('x') | last ) not in i2c_addresses.stdout
+
+- name: Run batt monitor levels script
+  ansible.builtin.cron:
+    name: "batt levels monitor"
+    special_time: reboot
+    job: |
+      {{ x708_install_path }}/bat.py 2>&1 | /usr/bin/logger -t batt --no-act -s 2>&1 | sed 's/^<[0-9]\+>//' >> /var/log/x708/batt.log
+
+
+- name: Run x708 pld
+  ansible.builtin.cron:
+    name: "x708 PLD"
+    special_time: reboot
+    job: |
+      {{ x708_install_path }}/pld.py 2>&1 | /usr/bin/logger -t pld --no-act -s 2>&1 | sed 's/^<[0-9]\+>//' >> /var/log/x708/pld.log
+
+- name: Create logrotate config
+  ansible.builtin.template:
+    src: x708.j2
+    dest: /etc/logrotate.d/x708
+    mode: "0644"

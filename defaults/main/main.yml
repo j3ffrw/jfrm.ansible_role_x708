@@ -1,0 +1,17 @@
+x708_pwmchip: 0
+x708_shutdownpin: 5
+x708_bootpin: 12
+x708_buttonpin: 13
+x708_pldpin: 6
+x708_fanpin: 16
+x708_rebootpulseminimum: 200
+x708_rebootpulsemaximum: 600
+x708_fan_temp_high_threshold: 55
+x708_fan_temp_low_threshold: 52
+x708_install_path: /opt/x708
+x708_pip_venv_path: /opt/venv
+x708_hex_i2caddress: "0x36"
+x708_gpio_chip_path: "/dev/gpiochip0"
+x708_pip_packages:
+  bookworm:
+    - gpiod
