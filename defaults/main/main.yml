@@ -15,6 +15,7 @@ x708_gpio_chip_path: "/dev/gpiochip0"
 x708_pip_packages:
   bookworm:
     - gpiod
+  bullseye: []
 x708_packages:
   default:
     - python3-smbus
