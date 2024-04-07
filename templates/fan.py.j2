@@ -3,6 +3,7 @@
 import subprocess
 import time
 import gpiod
+
 from gpiod.line import Direction, Value
 
 ON_THRESHOLD = {{ x708_fan_temp_high_threshold }}  # (degrees Celsius) Fan running at high speed at this temperature.
@@ -48,12 +49,12 @@ if __name__ == '__main__':
             # Run fan at high speed fan if the temperature has reached the limit and the fan
             # isn't already running.
             # NOTE: `fan.value` returns 1 for "on" and 0 for "off"
-            if temp > ON_THRESHOLD and not fan == 0:
+            if temp > ON_THRESHOLD and not fan == Value.ACTIVE:
                 request.set_value(GPIO_PIN, Value.ACTIVE)
 
             # Run fan at low speed if the fan is running and the temperature has dropped
             # below the limit.
-            elif fan == 0 and temp < OFF_THRESHOLD:
+            elif fan == Value.ACTIVE and temp < OFF_THRESHOLD:
                 request.set_value(GPIO_PIN, Value.INACTIVE)
 
             time.sleep(SLEEP_INTERVAL)

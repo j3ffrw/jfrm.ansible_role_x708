@@ -1,16 +1,26 @@
 # Excerpt from https://wiki.geekworm.com/X728-script
 
-- name: Copy x708 power button poller script
+- name: Copy x708 scripts
   ansible.builtin.template:
-    src: xPWR.sh.j2
-    dest: "{{ x708_install_path }}/xPWR.sh"
-    mode: "0765"
-
-- name: Copy x708 software shutdown script
-  ansible.builtin.template:
-    src: xSoft.sh.j2
-    dest: "{{ x708_install_path }}/xSoft.sh"
-    mode: "0765"
+    src: "{{ item.template }}"
+    dest: "{{ item.dest }}"
+    mode: "0754"
+  loop:
+    - template: bat.py.j2
+      dest: "{{ x708_install_path }}/bat.py"
+      description: low battery monitoring
+    - template: fan.py.j2
+      dest: "{{ x708_install_path }}/fan.py"
+      description: fan speed control
+    - template: pld.py.j2
+      dest: "{{ x708_install_path }}/pld.py"
+      description: power loss detection w/o shutdown test script
+    - template: xPWR.sh.j2
+      dest: "{{ x708_install_path }}/xPWR.sh"
+      description: power button listener script
+    - template: xSoft.sh.j2
+      dest: "{{ x708_install_path }}/xSoft.sh"
+      description: software shutdown script
 
 - name: Add power off alias
   ansible.builtin.lineinfile:
@@ -18,34 +28,18 @@
     regex: "^alias x708off"
     line: "alias x708off='sudo {{ x708_install_path }}/xSoft.sh {{ x708_pwmchip }} {{ x708_buttonpin }}'"
 
-- name: Copy battery levels monitor script
-  ansible.builtin.template:
-    src: rpigpio/bat.py.j2
-    dest: "{{ x708_install_path }}/bat.py"
-    mode: "0754"
-
-- name: Copy fan speed control
-  ansible.builtin.template:
-    src: fan.py.j2
-    dest: "{{ x708_install_path }}/fan.py"
-    mode: "0754"
-
-- name: Copy power loss detection w/o shutdown test script
-  ansible.builtin.template:
-    src: pld.py.j2
-    dest: "{{ x708_install_path }}/pld.py"
-    mode: "0754"
-
 - name: Create x708 systemd file
   ansible.builtin.template:
     src: "{{ item.template }}"
     dest: "{{ item.dest }}"
-    mode: "0640"
+    mode: "0644"
   loop:
     - template: x708-pwr.service.j2
       dest: /etc/systemd/system/x708-pwr.service
     - template: x708-fan.service.j2
       dest: /etc/systemd/system/x708-fan.service
+    - template: x708-bat.service.j2
+      dest: /etc/systemd/system/x708-bat.service
 
 - name: Enable x708 systemd services
   ansible.builtin.systemd:
@@ -56,3 +50,4 @@
   loop:
     - x708-pwr.service
     - x708-fan.service
+    - x708-bat.service

@@ -1,9 +1,9 @@
 [Unit]
-Description=CPU fan speed control
+Description=Low battery monitor
 
 [Service]
 Type=simple
-ExecStart={{ x708_install_path }}/fan.py
+ExecStart={{ x708_install_path }}/bat.py
 Restart=always
 
 User=root

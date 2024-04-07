@@ -7,7 +7,7 @@ import gpiod
 from datetime import timedelta
 from gpiod.line import Bias, Edge
 
-CHIP_PATH = {{ x708_gpio_chip_path }}
+CHIP_PATH      = "{{ x708_gpio_chip_path }}"
 GPIO_PLD_PORT  = {{ x708_pldpin }}
 
 def edge_type_str(event):

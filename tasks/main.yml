@@ -72,21 +72,6 @@
       #  when: '"36" not in i2c_addresses.stdout'
   when: (x708_hex_i2caddress | split('x') | last ) not in i2c_addresses.stdout
 
-- name: Run batt monitor levels script
-  ansible.builtin.cron:
-    name: "batt levels monitor"
-    special_time: reboot
-    job: |
-      {{ x708_install_path }}/bat.py 2>&1 | /usr/bin/logger -t batt --no-act -s 2>&1 | sed 's/^<[0-9]\+>//' >> /var/log/x708/batt.log
-
-
-- name: Run x708 pld
-  ansible.builtin.cron:
-    name: "x708 PLD"
-    special_time: reboot
-    job: |
-      {{ x708_install_path }}/pld.py 2>&1 | /usr/bin/logger -t pld --no-act -s 2>&1 | sed 's/^<[0-9]\+>//' >> /var/log/x708/pld.log
-
 - name: Create logrotate config
   ansible.builtin.template:
     src: x708.j2
