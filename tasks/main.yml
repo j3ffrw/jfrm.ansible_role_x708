@@ -3,12 +3,10 @@
 
 - name: Install packages
   ansible.builtin.apt:
-    pkg:
-      - python3-smbus
-      - i2c-tools
-      - python3-libgpiod
-      - libgpiod-dev
+    pkg: "{{ packages }}"
     update_cache: true
+  vars:
+    packages: "{{ x708_packages['default'] + x708_packages[ansible_distribution_release] }}"
 
 - name: Install pip modules
   ansible.builtin.pip:
